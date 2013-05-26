@@ -3,3 +3,8 @@ extends layout
 block content
   h1= title
   p Welcome to #{title}
+  p TL was here!
+
+  form(action="blabs", method="post", enctype="multipart/form-data")
+    input(type="file", name="audio")
+    input(type="submit", name="Send to server")
