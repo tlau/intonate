@@ -12,9 +12,12 @@ function main() {
   // Input widget
   var inputWidget = INTONATE.InputWidget({
     root: '#input'
-  }).on('submitted',function(event, params){
-    console.log('submitted: ' + params);
-    var newEntry = INTONATE.EntryWidget(params);
-    $('#entries').append(newEntry);
+  }).on('submitted',function(event, newBlab){
+    var jqxhr = serviceObject.post(newBlab);
+    var newEntry = INTONATE.EntryWidget({
+      blab: newBlab,
+      net: jqxhr
+    });
+    $('#entries').prepend(newEntry);
   });
 };

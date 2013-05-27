@@ -2,6 +2,19 @@ var INTONATE = INTONATE || {
   VERSION: 0.1
 };
 
+// A blab object to pass around
+INTONATE.Blab = (function(){
+  var blab;
+  function initialize(params) {
+    blab = params || {};
+    blab.text = params.text || undefined;
+    blab.audiokey = params.audiokey || undefined;
+    blab.id = params.id || undefined;
+    return blab;
+  };
+  return initialize;
+}());
+
 INTONATE.InputWidget = (function($){
   var domNode; // Reference to widget root element
   var net;     // INTONATE.Service object for network requests
@@ -34,7 +47,9 @@ INTONATE.InputWidget = (function($){
   };
   function onSend() {
     var theText = textInput.value;
-    domNode.trigger('submitted', theText);
+    domNode.trigger('submitted', INTONATE.Blab({
+      text: theText
+    }));
     clear();
   };
   function onAudio() {
@@ -58,17 +73,25 @@ INTONATE.InputWidget = (function($){
 
 INTONATE.EntryWidget = (function($){
   var domNode; // Reference to widget root element
+  var net;     // Service object
+  var blab;    // The Blab object represented by this widget
 
   // Initializer. Options:
   var ew = function(options) {
     var params = options || {};
+    net = options.net;
+    blab = options.blab;
     initializeDom();
+    render();
     return domNode;
   };
 
   // -------
   // Private
   // -------
+  function render() {
+    domNode.html(blab.text);
+  };
   function initializeDom() {
     domNode = $('#templates .wdg-intonate-entry').clone();
   };
@@ -80,18 +103,19 @@ INTONATE.Service = (function($){
   var net = function(serviceUrl){
     baseUrl = serviceUrl;
   };
-  function sendText(theText){
-    $.post(baseUrl + 'text', theText).
-      done(function(){ console.log('send success'); }).
-      fail(function(){ console.log('send error'); });
-  };
-  function sendAudio(theAudio){
-    console.log('send audio not implemented!');
+  function post(theBlab){
+    var jqxhr;
+    if(theBlab.text) {
+      jqxhr = $.post(baseUrl + 'blabs/new', { text: theBlab.text });
+    }
+    jqxhr.
+        done(function(){ console.log('send success'); }).
+        fail(function(){ console.log('send error'); });
+    return jqxhr;
   };
 
   // Advertise public functions
-  net.prototype.sendText = sendText;
-  net.prototype.sendAudio = sendAudio;
+  net.prototype.post = post;
 
   return net;
 }(jQuery));
