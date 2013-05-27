@@ -49,7 +49,7 @@ app.get('/blabs', function(req, res) {
   res.json({blabs: blabRepository.findAll()});
 });
 
-app.post('/blabs', function(req, res) {
+app.post('/blabs/new', function(req, res) {
   var blab = req.body;
   var audioData = req.files.audio;
   console.log(req.files);
@@ -63,14 +63,14 @@ app.post('/blabs', function(req, res) {
     }
     // Save data to the redis store
     db.set(key, data, function() {
-      blabRepository.new({
+      var newblab = blabRepository.new({
         title: blab.title || audioData.name,
         text: blab.text || audioData.type,
         audioKey: key
       });
+      res.json(newblab);
     });
   });
-  res.send(200);
 });
 
 app.get('/blabs/:id', function(req, res) {

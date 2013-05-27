@@ -37,6 +37,7 @@ exports.BlabRepository.prototype.new = function(blab) {
   this.nextId++;
 
   db.set('blabs_repository', JSON.stringify(this.blabs));
+  return blab;
 }
 
 /** Look up a blab by id */
