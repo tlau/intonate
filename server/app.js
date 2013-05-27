@@ -95,7 +95,7 @@ app.get('/blabs/:id/audio.m4a', function(req, res) {
   db.get(blab.audioKey, function(err, data) {
     console.log('Sending bytes to client:', data.length);
     res.writeHead(200, {
-      'Content-type': 'audio/x-m4a'
+      'Content-type': 'audio/AMR'
     });
     res.write(data);
     res.end();

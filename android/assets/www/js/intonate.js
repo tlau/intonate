@@ -52,32 +52,15 @@ INTONATE.InputWidget = (function($){
   };
   function onSend() {
     var blab = INTONATE.Blab();
-    function triggerSubmitted() {
-      //domNode.trigger('submitted', $('form',domNode)[0]);
-      domNode.trigger('submitted', blab);
-    };
-    function onResolveSuccess(fileEntry) {
-      console.log('Success! Name = ' + fileEntry.name);
-      fileEntry.file(function(file){
-        blab.audioFile = file;
-        console.log('Success! File = ' + file + ' / size = ' + file.size);
-        triggerSubmitted();
-      },function(){
-        console.log('Error getting File from FileEntry');
-      });
-    };
     if(mode == 'audio') {
       mediaObj.stopRecord();
       mediaObj.release();
       mediaObj = undefined;
-      console.log("I'm going to try getting the file now");
-      resolveLocalFileSystemURI("file:///sdcard/intonate.amr", onResolveSuccess, function(){
-        console.log("Error resolving local file system file");
-      });
+      blab.audioFile = 'file:///sdcard/intonate.amr';
     } else {
       blab.text = textInput.value;
-      triggerSubmitted();
     }
+    domNode.trigger('submitted', blab);
     clear();
   };
   function onAudio() {
@@ -148,6 +131,7 @@ INTONATE.Service = (function($){
     var options = new FileUploadOptions();
     options.fileKey="audio";
     options.fileName="intonate.amr";
+    options.mimeType="audio/AMR";
     options.params = {
       text: blab.text
     };
