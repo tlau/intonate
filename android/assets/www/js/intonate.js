@@ -4,13 +4,11 @@ var INTONATE = INTONATE || {
 
 // A blab object to pass around
 INTONATE.Blab = (function(){
-  var blab;
   function initialize(params) {
-    blab = params = params || {};
-    blab.text = params.text || undefined;
-    blab.audioFile = params.audioFile || undefined;
-    blab.id = params.id || undefined;
-    return blab;
+    params = params || {};
+    this.text = params.text || undefined;
+    this.audioFileName = params.audioFileName || undefined;
+    this.id = params.id || undefined;
   };
   return initialize;
 }());
@@ -30,7 +28,6 @@ INTONATE.InputWidget = (function($){
   // Constructor. Takes a selector. Creates an Input
   // widget in the firt occurence of the selector
   var iw = function(inputOptions) {
-    console.log('constructor');
     options = inputOptions || {};
     domNode = $(options.root);
 
@@ -51,12 +48,13 @@ INTONATE.InputWidget = (function($){
     setMode('text');
   };
   function onSend() {
-    var blab = INTONATE.Blab();
+    var blab = new INTONATE.Blab();
     if(mode == 'audio') {
       mediaObj.stopRecord();
       mediaObj.release();
       mediaObj = undefined;
-      blab.audioFile = 'file:///sdcard/intonate.amr';
+      blab.audioFileName = 'file:///sdcard/intonate.amr';
+      blab.text = "(audio translation in progress)";
     } else {
       blab.text = textInput.value;
     }
@@ -76,8 +74,10 @@ INTONATE.InputWidget = (function($){
       $('.audio-meter').show();
       mediaObj = new Media("intonate.amr", mediaSuccess, mediaError);
       mediaObj.startRecord();
+      console.log("Recording stated");
     } else {
       if( mediaObj) {
+        nextStep = function() {};
         mediaObj.stopRecord();
         mediaObj.release();
         mediaObj = undefined;
@@ -96,38 +96,41 @@ INTONATE.InputWidget = (function($){
 }(jQuery));
 
 INTONATE.EntryWidget = (function($){
-  var domNode; // Reference to widget root element
-  var net;     // Service object
-  var blab;    // The Blab object represented by this widget
 
-  // Initializer. Options:
+  // Constructor
   var ew = function(options) {
     var params = options || {};
-    net = options.net;
-    blab = options.blab || {};
-    initializeDom();
-    render();
-    return domNode;
+    this.blab = params.blab || {};
+    this.domNode = initializeDom();
+    render.call(this);
+  };
+
+  ew.prototype.getBlab = function getBlab() {
+    return this.blab;
+  };
+  ew.prototype.update = function update(data) {
+    blab.id = data.id || blab.id;
+    blab.text = data.text || blab.text;
+    render.call(this);
   };
 
   // -------
   // Private
   // -------
   function render() {
-    domNode.html(blab.text);
+    this.domNode.html(this.blab.text);
   };
   function initializeDom() {
-    domNode = $('#templates .wdg-intonate-entry').clone();
+    return $('#templates .wdg-intonate-entry').clone();
   };
   return ew;
 }(jQuery));
 
 INTONATE.Service = (function($){
-  var baseUrl;
   var net = function(serviceUrl){
-    baseUrl = serviceUrl;
+    this.baseUrl = serviceUrl;
   };
-  function post(blab){
+  function post(blab, success){
     var options = new FileUploadOptions();
     options.fileKey="audio";
     options.fileName="intonate.amr";
@@ -136,33 +139,38 @@ INTONATE.Service = (function($){
       text: blab.text
     };
     var ft = new FileTransfer();
-    ft.upload("file:///sdcard/intonate.amr", baseUrl + 'blabs/new',
-              function() { console.log('success sending audio file'); },
+    ft.upload("file:///sdcard/intonate.amr", this.baseUrl + 'blabs/new',
+              success,
               function() { console.log('error sending audio file'); },
               options);
-    
-    /*
-    var theForm = new FormData();
-    theForm.append('text',blab.name);
-    theForm.append('audio',blab.audioFile);
-    var jqxhr = $.ajax({
-      url: baseUrl + 'blabs/new',
-      type: 'POST',
-      data: theForm,
-      // jQuery: relax!
-      cache: false,
-      contentType: false,
-      processData: false
-    });
-    jqxhr.
-        done(function(){ console.log('send success'); }).
-        fail(function(){ console.log('send error'); });
-    return jqxhr;
-    */
+  };
+  function getBlabs() {
+    return $.get(this.baseUrl+'blabs');
   };
 
   // Advertise public functions
   net.prototype.post = post;
+  net.prototype.getBlabs = getBlabs;
 
   return net;
 }(jQuery));
+
+// --------------------------------
+// Mock objects for browser testing
+// --------------------------------
+
+/*
+MockMedia = function() {};
+MockMedia.prototype = {
+  startRecord: function() {},
+  stopRecord: function() {},
+  release: function() {}
+};
+Media = window.Media || MockMedia;
+FileUploadOptions = window.FileUploadOptions || function() {};
+MockFileTransfer = function() {};
+MockFileTransfer.prototype = {
+  upload: function() {}
+};
+FileTransfer = window.FileTransfer || MockFileTransfer;
+*/
