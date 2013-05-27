@@ -9,8 +9,8 @@ exports.BlabRepository = function() {
   this.nextId = 1;
   var _this = this;
   db.get('blabs_repository', function(err, data) {
-    console.log('Got blabs data:', data.toString());
     if (data) {
+      console.log('Got blabs data:', data.toString());
       _this.blabs = JSON.parse(data); 
       console.log('We have', _this.blabs.length, 'blabs');
       var max = 0;
