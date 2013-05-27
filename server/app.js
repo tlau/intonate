@@ -56,7 +56,6 @@ app.get('/blabs', function(req, res) {
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
   var audioData = req.files.audio;
-  console.log(req.files);
 
   var key = "blab_" + Math.random() * 100000;
   fs.readFile(audioData.path, function(err, data) {
@@ -69,10 +68,18 @@ app.post('/blabs/new', function(req, res) {
     db.set(key, data, function() {
       var newblab = blabRepository.new({
         filename: audioData.name,
-        text: blab.text || audioData.type,
+        text: blab.text,
+        contentType: audioData.type,
         length: data.length,
         audioKey: key
       });
+
+      // Fire off a transcription request
+      transcribe(newblab, res, function() {
+        console.log('Transcription finished');
+      });
+
+      // Return the result to the client
       res.json(newblab);
     });
   });
@@ -87,7 +94,7 @@ app.get('/blabs/:id', function(req, res) {
   }
 });
 
-app.get('/blabs/:id/audio.m4a', function(req, res) {
+app.get('/blabs/:id/audio', function(req, res) {
   var blabid = req.params.id;
   try {
     var blab = blabRepository.find(blabid);
@@ -96,10 +103,13 @@ app.get('/blabs/:id/audio.m4a', function(req, res) {
     return;
   }
 
+  var type = req.params.type;
+
   db.get(blab.audioKey, function(err, data) {
     console.log('Sending bytes to client:', data.length);
+    console.log('Sending content-type:', blab.contentType);
     res.writeHead(200, {
-      'Content-type': 'audio/x-m4a'
+      'Content-type': blab.contentType
     });
     res.write(data);
     res.end();
@@ -154,12 +164,23 @@ app.get('/blabs/:id/transcribe', function(req, res) {
     return;
   }
 
-  console.log('Getting audioKey:', blab.audioKey);
+  transcribe(blab, res, function(err, msg) {
+    if (err) {
+      console.log('Server returned error', msg);
+      res.send(500, "Server returned error: " + msg);
+      return;
+    }
 
+    console.log('Server returned recognized text:', msg);
+
+    res.send(msg);
+  });
+});
+
+function transcribe(blab, res, callback) {
   db.get(blab.audioKey, function(err, data) {
     if (err) {
-      res.send(500);
-      return;
+      callback(true, "Unable to get audio from redis store");
     }
     console.log('Have binary data:', data);
 
@@ -177,27 +198,24 @@ app.get('/blabs/:id/transcribe', function(req, res) {
     };
 
     var req = https.request(options, function(response) {
-      console.log('Server returned status:', response.statusCode);
-      if (response.statusCode != 200) {
-        res(response.statusCode);
-        return;
-      }
       response.on('data', function(chunk) {
         console.log('Body:', chunk.toString());
-        res.send(chunk.toString());
-        // Here we have the results from the server
 
+        if (response.statusCode != 200) {
+          callback(true, "Error from AT&T server: " + chunk.toString());
+          return;
+        }
+
+        // Here we have the results from the server
         var serverResults = JSON.parse(chunk);
-        console.log('Recognition:', serverResults.Recognition);
-        console.log('NBest:', serverResults.Recognition.NBest);
-        console.log('ResultText:', serverResults.Recognition.NBest[0].ResultText);
         var text = serverResults.Recognition.NBest[0].ResultText;
         console.log('Recognized text:', text);
 
         blab.transcription = text;
         blabRepository.save();
-      });
 
+        callback(false, text);
+      });
     });
 
     req.write(data);
@@ -205,7 +223,7 @@ app.get('/blabs/:id/transcribe', function(req, res) {
 
     console.log('Sending', data.length, 'bytes to AT&T Speech API');
   });
-});
+}
 
 // ----------------------------------------------------------------------
 // Create the webserver

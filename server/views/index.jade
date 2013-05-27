@@ -21,7 +21,7 @@ block content
     ul
       each blab in blabs
         li #{blab.text}
-          a(href="/blabs/#{blab.id}/audio.m4a") show &nbsp;
+          a(href="/blabs/#{blab.id}/audio") show &nbsp;
           a(href="/blabs/#{blab.id}/transcribe") transcribe &nbsp;
           form(action="/blabs/#{blab.id}/remove", method="post")
             input(type="submit", value="delete")
