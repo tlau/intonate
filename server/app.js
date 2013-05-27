@@ -1,4 +1,3 @@
-
 /**
  * Module dependencies.
  */
@@ -23,7 +22,8 @@ app.use(express.logger('dev'));
 app.use(express.bodyParser());
 app.use(express.methodOverride());
 app.use(app.router);
-app.use(express.static(path.join(__dirname, 'public')));
+// app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../android/assets/www')));
 
 // development only
 if ('development' == app.get('env')) {
@@ -52,7 +52,8 @@ app.get('/blabs', function(req, res) {
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
   var audioData = req.files.audio;
-  console.log(req.files);
+  console.log('Received files: ');
+  console.dir(req.files);
 
   var key = "blab_" + Math.random() * 100000;
   fs.readFile(audioData.path, function(err, data) {
