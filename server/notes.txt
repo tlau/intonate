@@ -1,0 +1,38 @@
+Web-based speech apis
+
+AT&T Speech API at http://developer.att.com/developer/
+
+% curl "https://api.att.com/oauth/token" --insecure --header "Accept: application/x-www-form-urlencoded" --header "Content-Type: application/x-www-form-urlencoded" --data "client_id=19a36b6e09fd263f323b0052f9e2c09c&client_secret=0974522b519e5882&grant_type=client_credentials&scope=SPEECH"
+
+{
+"access_token":"b888bac0968b87ba2b5a1f6e03c978ac",
+"expires_in":"0",
+"refresh_token":"4e0450ee97b2d35d64a98594ca8b104bda909b0b"
+}
+
+To use:
+
+% curl "https://api.att.com/rest/2/SpeechToText" --insecure --request POST --header "Authorization: Bearer b888bac0968b87ba2b5a1f6e03c978ac" --header "Content-type: audio/wav" --header "Accept: application/json" --header "X-SpeechContext: Generic" --data-binary "@/Users/tlau/Documents/Blabs/test2.wav"
+
+Result:
+
+{
+  "Recognition":{
+    "Status":"OK",
+    "ResponseId":"eb516c5b18fdf330d6ef93f052045dbb",
+    "Info": {
+      "Metrics": {"AudioTime":5.78000021, "AudioBytes":254960}
+    },
+    "NBest":[
+      {
+        "WordScores":[ 0.2, 0.12, 0.18, 0.21, 0.21, 0.21, 0.21, 0.21, 0.15, 0.23, 0.23, 0.34, 0.34, 1, 0.03],
+        "Confidence":0.18,
+        "Grade":"accept",
+        "ResultText":"The eight and t speech a p I plan to take a break from hairs.",
+        "Words":["The", "eight", "and", "t", "speech", "a", "p", "I", "plan", "to", "take", "a", "break", "from", "hairs."],
+        "LanguageId":"en-US",
+        "Hypothesis":"the eight and t speech a p i plan to take a break from hairs"
+      }
+    ]
+  }
+}
