@@ -31,7 +31,7 @@ if ('development' == app.get('env')) {
 }
 
 // Set up our database
-var db = redis.createClient();
+var db = redis.createClient(null, null, {return_buffers: true});
 db.on("error", function(err) {
   console.log("Redis error:" + err);
 });
@@ -52,13 +52,19 @@ app.get('/blabs', function(req, res) {
 app.post('/blabs', function(req, res) {
   var blab = req.body;
   var audioData = req.files.audio;
+  console.log(req.files);
 
   var key = "blab_" + Math.random() * 100000;
   fs.readFile(audioData.path, function(err, data) {
+    if (audioData.size != data.length) {
+      console.log('HUH??  size is', audioData.size, 'and length is', data.length);
+    } else {
+      console.log('GOOD! length is', data.length);
+    }
     // Save data to the redis store
     db.set(key, data, function() {
       blabRepository.new({
-        title: blab.title || 'Untitled blab',
+        title: blab.title || audioData.name,
         text: blab.text || audioData.type,
         audioKey: key
       });
@@ -89,6 +95,39 @@ app.get('/blabs/:id/audio.m4a', function(req, res) {
     console.log('Sending bytes to client:', data.length);
     res.writeHead(200, {
       'Content-type': 'audio/x-m4a'
+    });
+    res.write(data);
+    res.end();
+  });
+});
+
+app.get('/blabs/:id/pic.png', function(req, res) {
+  var blabid = req.params.id;
+  try {
+    var blab = blabRepository.find(blabid);
+  } catch (exception) {
+    res.send(404);
+    return;
+  }
+
+  db.get(blab.audioKey, function(err, data) {
+    if (err) {
+      console.log('Error fetching data from redis:', err);
+      return;
+    }
+
+    fs.writeFile(__dirname + '/out.png', data, function(err) {
+      if (err) {
+        console.log('error writing png', err);
+      } else {
+        console.log('wrote', data.length, 'bytes to out.png');
+      }
+    });
+      
+    console.log('Sending bytes to client:', data.length);
+    res.writeHead(200, {
+      'Content-length': data.length,
+      'Content-type': 'image/png'
     });
     res.write(data);
     res.end();
