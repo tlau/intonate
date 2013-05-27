@@ -1,28 +1,25 @@
 var redis = require('redis');
-var db = redis.createClient();
+var db = redis.createClient(null, null, {return_buffers: true});
 
 // ----------------------------------------------------------------------
 // Blab interface
 
 exports.BlabRepository = function() {
   this.blabs = [];
-  console.log('getting repository');
+  this.nextId = 1;
   var _this = this;
   db.get('blabs_repository', function(err, data) {
-    console.log('Got repo, data is', data);
+    console.log('Got blabs data:', data);
     if (data) {
-      console.log('setting blabs');
       _this.blabs = JSON.parse(data); 
       console.log('We have', _this.blabs.length, 'blabs');
+      _this.nextId = _this.blabs.length + 1;
     }
   });
-  this.nextId = 1;
 }
 
 /** Return all blabs */
 exports.BlabRepository.prototype.findAll = function() {
-  console.log('returning blabs:', this.blabs);
-  console.log('We have', this.blabs.length, 'blabs');
   return this.blabs;
 }
 
