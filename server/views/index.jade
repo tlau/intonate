@@ -1,25 +1,29 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+  div(ng-controller="BlabCtrl")
+    h1= title
+    p Welcome to #{title}
+    p Angular says welcome to {{name}}
 
-  p Upload new blab:
-  form(action="blabs/new", method="post", enctype="multipart/form-data")
-    p Text:
-    input(type="text", name="text")
-    br
-    input(type="file", name="audio")
-    br
-    input(type="submit", name="Send to server")
+    p Upload new blab:
+    form(action="blabs/new", method="post", enctype="multipart/form-data")
+      p Text:
+      input(type="text", name="text")
+      br
+      input(type="file", name="audio")
+      br
+      input(type="submit", name="Send to server")
 
 
-  hr
-  h2 Current blabs
-  ul
-    each blab in blabs
-      li #{blab.text}
-        a(href="/blabs/#{blab.id}/audio.m4a") show
-        form(action="/blabs/#{blab.id}/remove", method="post")
-          input(type="submit", value="delete")
-    
+    hr
+    h2 Current blabs
+    ul
+      each blab in blabs
+        li #{blab.text}
+          a(href="/blabs/#{blab.id}/audio.m4a") show &nbsp;
+          a(href="/blabs/#{blab.id}/transcribe") transcribe &nbsp;
+          form(action="/blabs/#{blab.id}/remove", method="post")
+            input(type="submit", value="delete")
+      
+

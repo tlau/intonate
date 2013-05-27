@@ -8,6 +8,7 @@ var express = require('express')
   , blabs = require('./routes/blabs')
   , user = require('./routes/user')
   , http = require('http')
+  , https = require('https')
   , fs = require('fs')
   , redis = require('redis')
   , path = require('path');
@@ -39,6 +40,9 @@ db.on("error", function(err) {
 // Set up the blab repository
 var blabRepository = new blabs.BlabRepository();
 
+var OAUTH_TOKEN = "b888bac0968b87ba2b5a1f6e03c978ac";
+
+
 // ----------------------------------------------------------------------
 
 // Set up the web server routes
@@ -52,6 +56,7 @@ app.get('/blabs', function(req, res) {
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
   var audioData = req.files.audio;
+  blab.length = audioData.size;
   console.log(req.files);
 
   var key = "blab_" + Math.random() * 100000;
@@ -59,12 +64,12 @@ app.post('/blabs/new', function(req, res) {
     if (audioData.size != data.length) {
       console.log('HUH??  size is', audioData.size, 'and length is', data.length);
     } else {
-      console.log('GOOD! length is', data.length);
+      console.log('GOOD! received', data.length, 'bytes of audio');
     }
     // Save data to the redis store
     db.set(key, data, function() {
       var newblab = blabRepository.new({
-        title: blab.title || audioData.name,
+        filename: audioData.name,
         text: blab.text || audioData.type,
         audioKey: key
       });
@@ -140,6 +145,69 @@ app.post('/blabs/:id/remove', function(req, res) {
   res.send(200);
 });
 
+app.get('/blabs/:id/transcribe', function(req, res) {
+  var blabid = req.params.id;
+  try {
+    var blab = blabRepository.find(blabid);
+  } catch (exception) {
+    res.send(404);
+    return;
+  }
+
+  console.log('Getting audioKey:', blab.audioKey);
+
+  db.get(blab.audioKey, function(err, data) {
+    if (err) {
+      res.send(500);
+      return;
+    }
+    console.log('Have binary data:', data);
+
+    var options = {
+      host: 'api.att.com',
+      path: '/rest/2/SpeechToText',
+      method: 'POST',
+      headers: {
+        Authorization: "Bearer " + OAUTH_TOKEN,
+        Accept: "application/json",
+        "X-SpeechContext": "Generic",
+        "Content-Type": "audio/wav",
+        "Content-Length": data.length
+      }
+    };
+
+    var req = https.request(options, function(response) {
+      console.log('Server returned status:', response.statusCode);
+      if (response.statusCode != 200) {
+        res(response.statusCode);
+        return;
+      }
+      response.on('data', function(chunk) {
+        console.log('Body:', chunk.toString());
+        res.send(chunk.toString());
+        // Here we have the results from the server
+
+        var serverResults = JSON.parse(chunk);
+        console.log('Recognition:', serverResults.Recognition);
+        console.log('NBest:', serverResults.Recognition.NBest);
+        console.log('ResultText:', serverResults.Recognition.NBest[0].ResultText);
+        var text = serverResults.Recognition.NBest[0].ResultText;
+        console.log('Recognized text:', text);
+
+        blab.transcription = text;
+        blabRepository.save();
+      });
+
+    });
+
+    req.write(data);
+    req.end();
+
+    console.log('Sending', data.length, 'bytes to AT&T Speech API');
+  });
+});
+
+// ----------------------------------------------------------------------
 // Create the webserver
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port'));

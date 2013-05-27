@@ -36,7 +36,7 @@ exports.BlabRepository.prototype.new = function(blab) {
   this.blabs.push(blab);
   this.nextId++;
 
-  db.set('blabs_repository', JSON.stringify(this.blabs));
+  this.save();
   return blab;
 }
 
@@ -56,7 +56,7 @@ exports.BlabRepository.prototype.remove = function(id) {
   var index = this._findIndex(id);
   console.log('Removing blab with id', id);
   this.blabs.splice(index, 1);
-  db.set('blabs_repository', JSON.stringify(this.blabs));
+  this.save();
   console.log('blabs is now', this.blabs);
 }
 
@@ -71,4 +71,8 @@ exports.BlabRepository.prototype._findIndex = function(id) {
   }
 
   throw new Error('blab not found');
+}
+
+exports.BlabRepository.prototype.save = function() {
+  db.set('blabs_repository', JSON.stringify(this.blabs));
 }
