@@ -30,15 +30,16 @@ if ('development' == app.get('env')) {
   app.use(express.errorHandler());
 }
 
-
-// Set up the blab repository
-var blabRepository = new blabs.BlabRepository();
-
 // Set up our database
 var db = redis.createClient();
 db.on("error", function(err) {
   console.log("Redis error:" + err);
 });
+
+// Set up the blab repository
+var blabRepository = new blabs.BlabRepository();
+
+// ----------------------------------------------------------------------
 
 // Set up the web server routes
 app.get('/', routes.index);
@@ -73,6 +74,25 @@ app.get('/blabs/:id', function(req, res) {
   } catch (exception) {
     res.send(404);
   }
+});
+
+app.get('/blabs/:id/audio.m4a', function(req, res) {
+  var blabid = req.params.id;
+  try {
+    var blab = blabRepository.find(blabid);
+  } catch (exception) {
+    res.send(404);
+    return;
+  }
+
+  db.get(blab.audioKey, function(err, data) {
+    console.log('Sending bytes to client:', data.length);
+    res.writeHead(200, {
+      'Content-type': 'audio/x-m4a'
+    });
+    res.write(data);
+    res.end();
+  });
 });
 
 // Create the webserver
