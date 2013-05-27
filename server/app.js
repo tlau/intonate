@@ -134,6 +134,12 @@ app.get('/blabs/:id/pic.png', function(req, res) {
   });
 });
 
+app.post('/blabs/:id/remove', function(req, res) {
+  var id = req.params.id;
+  blabRepository.remove(id);
+  res.send(200);
+});
+
 // Create the webserver
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port'));
