@@ -56,7 +56,6 @@ app.get('/blabs', function(req, res) {
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
   var audioData = req.files.audio;
-  blab.length = audioData.size;
   console.log(req.files);
 
   var key = "blab_" + Math.random() * 100000;
@@ -71,6 +70,7 @@ app.post('/blabs/new', function(req, res) {
       var newblab = blabRepository.new({
         filename: audioData.name,
         text: blab.text || audioData.type,
+        length: data.length,
         audioKey: key
       });
       res.json(newblab);
