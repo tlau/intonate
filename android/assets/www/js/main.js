@@ -15,7 +15,8 @@ function main() {
     root: '#input'
   }).on('submitted',function(event, blab){
     var newEntry = new INTONATE.EntryWidget({
-      blab: blab
+      blab: blab,
+      network: serviceObject
     });
     $('#entries').prepend(newEntry.domNode);
     allWidgets.push(newEntry);
@@ -30,7 +31,8 @@ function main() {
       data.blabs.forEach(function(blab){
         var blab = new INTONATE.Blab(blab);
         var newEntry = new INTONATE.EntryWidget({
-          blab: blab
+          blab: blab,
+          network: serviceObject
         });
         $('#entries').prepend(newEntry.domNode);
         allWidgets.push(newEntry);

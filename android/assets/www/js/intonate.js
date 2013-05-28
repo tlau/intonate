@@ -5,7 +5,7 @@ var INTONATE = INTONATE || {
 // A blab object to pass around
 INTONATE.Blab = (function(){
   function initialize(params) {
-    params = params || {};
+    var params = params || {};
     this.text = params.text || undefined;
     this.audioFileName = params.audioFileName || undefined;
     this.id = params.id || undefined;
@@ -101,16 +101,32 @@ INTONATE.EntryWidget = (function($){
   var ew = function(options) {
     var params = options || {};
     this.blab = params.blab || {};
-    this.domNode = initializeDom();
+    this.network = params.network;
+
+    this.domNode = initializeDom.call(this);
     render.call(this);
+
+    // Keep track of the current audio playback state
+    //  disabled: no audio can be played
+    //  idle: can play but no one asked to
+    //  downloading: downloading file for playback
+    //  ready: audio available locally for playback
+    //  playing: in the middle of playback
+    if(this.blab.audioFileName) {
+      this.playingState = "ready";
+    } else if(this.blab.id) {
+      this.playingState = "idle";
+    } else {
+      this.playingState = "disabled";
+    }
   };
 
   ew.prototype.getBlab = function getBlab() {
     return this.blab;
   };
   ew.prototype.update = function update(data) {
-    blab.id = data.id || blab.id;
-    blab.text = data.text || blab.text;
+    this.blab.id = data.id || this.blab.id;
+    this.blab.text = data.text || this.blab.text;
     render.call(this);
   };
 
@@ -118,10 +134,75 @@ INTONATE.EntryWidget = (function($){
   // Private
   // -------
   function render() {
-    this.domNode.html(this.blab.text);
+    $('.text-entry',this.domNode).html(this.blab.text);
+    $('.play',this.domNode).hide();
+    $('.stop',this.domNode).hide();
+    $('.download',this.domNode).hide();
+    if(this.playingState == 'downloading') {
+      $('.download',this.domNode).show();
+    } else if(this.playingState == 'playing') {
+      $('.stop',this.domNode).show();
+    } else {
+      $('.play',this.domNode).show();
+    }
   };
   function initializeDom() {
-    return $('#templates .wdg-intonate-entry').clone();
+    var _this = this;
+    var domNode = $('#templates .wdg-intonate-entry').clone();
+    $('.play',domNode).on('click',function() {
+      startPlayback.call(_this);
+    });
+    $('.stop',domNode).on('click',function() {
+      stopPlayback.call(_this);
+    });
+    return domNode;
+  };
+  function startPlayback() {
+    var _this = this;
+    // Ignore concurrent or invalid requests for playback
+    if(this.playingState in { playing: true, downloading: true, disabled: true }) {
+      console.log('Cancelling playback, playingState was: ' + this.playingState);
+      return;
+
+    // See if we need to start downloading
+    } else if(this.playingState == 'idle') {
+      this.network.getBlabAudio(this.blab.id, function(fileEntry) {
+        // _this.blab.audioFileName = fileEntry.fullPath.split("/").reverse()[0];
+        _this.blab.audioFileName = fileEntry.fullPath;
+        _this.playingState = 'ready';
+        startPlayback.call(_this);
+      });
+      // Updated buttons
+      this.playingState = 'downloading';
+      render.call(this);
+
+
+    // If we're here it must mean we have the audio locally so, play
+    } else {
+      this.playingState = 'playing';
+      render.call(this);
+
+      this.mediaObj = new Media(this.blab.audioFileName,
+             function success() {
+               stopPlayback.call(_this);
+             },
+             function error() {
+               console.log("media playback error");
+             },
+             function status() {
+               console.log("media playback status");
+             });
+      this.mediaObj.play();
+    }
+  };
+  function stopPlayback() {
+    if(this.playingState == 'playing') {
+      this.mediaObj.stop();
+      this.mediaObj.release();
+      this.mediaObj = undefined;
+      this.playingState = 'ready';
+      render.call(this);
+    }
   };
   return ew;
 }(jQuery));
@@ -147,10 +228,20 @@ INTONATE.Service = (function($){
   function getBlabs() {
     return $.get(this.baseUrl+'blabs');
   };
+  function getAudio(blabId, callback) {
+    var fileName = 'downblab' + blabId;
+    var ft = new FileTransfer();
+    ft.download(this.baseUrl+'blabs/'+blabId+'/audio',
+               'file:///sdcard/'+fileName,
+               callback, function() {
+                console.log("Error fetching audio");
+               });
+  };
 
   // Advertise public functions
   net.prototype.post = post;
   net.prototype.getBlabs = getBlabs;
+  net.prototype.getBlabAudio = getAudio;
 
   return net;
 }(jQuery));
