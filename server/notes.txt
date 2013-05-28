@@ -1,6 +1,13 @@
 Web-based speech apis
 
-AT&T Speech API at http://developer.att.com/developer/
+AT&T Speech API at https://devconnect-api.att.com/sdm/my-free-trial-access
+
+App Name: Tessa Lau Test App
+App Key: 19a36b6e09fd263f323b0052f9e2c09c
+Secret: 0974522b519e5882
+90 day free trial starting 5/27/2013
+
+Get OAUTH access token:
 
 % curl "https://api.att.com/oauth/token" --insecure --header "Accept: application/x-www-form-urlencoded" --header "Content-Type: application/x-www-form-urlencoded" --data "client_id=19a36b6e09fd263f323b0052f9e2c09c&client_secret=0974522b519e5882&grant_type=client_credentials&scope=SPEECH"
 

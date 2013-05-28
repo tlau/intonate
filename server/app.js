@@ -10,7 +10,8 @@ var express = require('express')
   , https = require('https')
   , fs = require('fs')
   , redis = require('redis')
-  , path = require('path');
+  , path = require('path')
+  , child_process = require('child_process');
 
 var app = express();
 
@@ -55,33 +56,55 @@ app.get('/blabs', function(req, res) {
 
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
-  var audioData = req.files.audio;
-  var key = "blab_" + Math.random() * 100000;
-  fs.readFile(audioData.path, function(err, data) {
-    if (audioData.size != data.length) {
-      console.log('HUH??  size is', audioData.size, 'and length is', data.length);
-    } else {
-      console.log('GOOD! received', data.length, 'bytes of audio');
-    }
-    // Save data to the redis store
-    db.set(key, data, function() {
-      var newblab = blabRepository.new({
-        filename: audioData.name,
-        text: blab.text,
-        contentType: audioData.type,
-        length: data.length,
-        audioKey: key
-      });
+  if (req.files && req.files.audio && req.files.audio.name) {
+    var audioData = req.files.audio;
 
-      // Fire off a transcription request
-      transcribe(newblab, res, function() {
-        console.log('Transcription finished');
-      });
+    var key = "blab_" + Math.random() * 100000;
+    fs.readFile(audioData.path, function(err, data) {
+      if (audioData.size != data.length) {
+        console.log('HUH??  size is', audioData.size, 'and length is', data.length);
+      } else {
+        console.log('GOOD! received', data.length, 'bytes of audio');
+      }
+      // Save data to the redis store
+      db.set(key, data, function() {
+        var newblab = blabRepository.new({
+          filename: audioData.name,
+          text: blab.text,
+          contentType: audioData.type,
+          length: data.length,
+          audioKey: key
+        });
 
-      // Return the result to the client
-      res.json(newblab);
+        // Convert it to wav if necessary
+        console.log('converting data from amr to wav');
+
+        convert(data, function(err, wavdata) {
+          if (err) {
+            res.send(500, msg);
+          }
+
+          newblab.wavKey = "blab_" + Math.random() * 100000;
+          console.log('Will stuff wav content into', newblab.wavKey);
+          db.set(newblab.wavKey, wavdata, function() {
+            // Fire off a transcription request
+            console.log('Sending transcription request');
+            transcribe(newblab, res, function(msg) {
+              console.log('Transcription finished, result is', msg);
+            });
+          });
+        });
+
+        // Return the result to the client
+        res.json(newblab);
+      });
     });
-  });
+  } else {
+    var newblab = blabRepository.new({
+      text: blab.text
+    });
+    res.json(newblab);
+  }
 });
 
 app.get('/blabs/:id', function(req, res) {
@@ -176,8 +199,26 @@ app.get('/blabs/:id/transcribe', function(req, res) {
   });
 });
 
+function convert(amrdata, callback) {
+  var amrtmp = __dirname + '/in.amr';
+  var wavtmp = __dirname + '/out.wav';
+  fs.writeFile(amrtmp, amrdata, function(err) {
+    child_process.execFile('avconv', ['-y', '-i', amrtmp, wavtmp], {},
+      function(error, stdout, stderr) {
+        if (error) {
+          // Handle error execing avconv
+          callback(true, error);
+          return;
+        }
+        fs.readFile(wavtmp, function(err, data) {
+          callback(false, data);
+        });
+    });
+  });
+}
+
 function transcribe(blab, res, callback) {
-  db.get(blab.audioKey, function(err, data) {
+  db.get(blab.wavKey, function(err, data) {
     if (err) {
       callback(true, "Unable to get audio from redis store");
     }
