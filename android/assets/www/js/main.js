@@ -3,7 +3,6 @@ function onDeviceReady() {
   main();
 }
 
-var allWidgets = [];
 
 // Main application entry point
 function main() {
@@ -18,8 +17,7 @@ function main() {
       blab: blab,
       network: serviceObject
     });
-    $('#entries').prepend(newEntry.domNode);
-    allWidgets.push(newEntry);
+    appendWidget(newEntry);
     var jqxhr = serviceObject.post(blab, function(data) {
       newEntry.update(JSON.parse(data.response));
     });
@@ -34,8 +32,22 @@ function main() {
           blab: blab,
           network: serviceObject
         });
-        $('#entries').prepend(newEntry.domNode);
-        allWidgets.push(newEntry);
+        appendWidget(newEntry);
       });
     });
 };
+
+var allWidgets = [];
+function appendWidget(newEntry) {
+  $('#entries').prepend(newEntry.domNode);
+  allWidgets.push(newEntry);
+  $(newEntry).on('playbackFinished',function(event,entry) {
+    var i = allWidgets.indexOf(entry);
+    if(allWidgets.length > i+1) {
+      allWidgets[i+1].play();
+    }
+  });
+};
+
+
+

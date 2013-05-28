@@ -129,6 +129,7 @@ INTONATE.EntryWidget = (function($){
     this.blab.text = data.text || this.blab.text;
     render.call(this);
   };
+  ew.prototype.play = startPlayback;
 
   // -------
   // Private
@@ -184,7 +185,8 @@ INTONATE.EntryWidget = (function($){
 
       this.mediaObj = new Media(this.blab.audioFileName,
              function success() {
-               stopPlayback.call(_this);
+               stopPlayback.call(_this, true);
+               $(_this).trigger('playbackFinished', _this);
              },
              function error() {
                console.log("media playback error");
@@ -195,9 +197,10 @@ INTONATE.EntryWidget = (function($){
       this.mediaObj.play();
     }
   };
-  function stopPlayback() {
+  function stopPlayback(skipStop) {
     if(this.playingState == 'playing') {
-      this.mediaObj.stop();
+      if(!skipStop)
+        this.mediaObj.stop();
       this.mediaObj.release();
       this.mediaObj = undefined;
       this.playingState = 'ready';
