@@ -6,7 +6,7 @@ var INTONATE = INTONATE || {
 INTONATE.Blab = (function(){
   function initialize(params) {
     var params = params || {};
-    this.text = params.text || undefined;
+    this.text = params.transcription || params.text || undefined;
     this.audioFileName = params.audioFileName || undefined;
     this.id = params.id || undefined;
   };
