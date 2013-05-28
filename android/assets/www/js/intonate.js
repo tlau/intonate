@@ -195,6 +195,7 @@ INTONATE.EntryWidget = (function($){
                console.log("media playback status");
              });
       this.mediaObj.play();
+      $(_this).trigger('playbackStarted', _this);
     }
   };
   function stopPlayback(skipStop) {
