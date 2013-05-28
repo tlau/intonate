@@ -55,34 +55,41 @@ app.get('/blabs', function(req, res) {
 
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
-  var audioData = req.files.audio;
+  if (req.files && req.files.audio && req.files.audio.name) {
+    var audioData = req.files.audio;
 
-  var key = "blab_" + Math.random() * 100000;
-  fs.readFile(audioData.path, function(err, data) {
-    if (audioData.size != data.length) {
-      console.log('HUH??  size is', audioData.size, 'and length is', data.length);
-    } else {
-      console.log('GOOD! received', data.length, 'bytes of audio');
-    }
-    // Save data to the redis store
-    db.set(key, data, function() {
-      var newblab = blabRepository.new({
-        filename: audioData.name,
-        text: blab.text,
-        contentType: audioData.type,
-        length: data.length,
-        audioKey: key
+    var key = "blab_" + Math.random() * 100000;
+    fs.readFile(audioData.path, function(err, data) {
+      if (audioData.size != data.length) {
+        console.log('HUH??  size is', audioData.size, 'and length is', data.length);
+      } else {
+        console.log('GOOD! received', data.length, 'bytes of audio');
+      }
+      // Save data to the redis store
+      db.set(key, data, function() {
+        var newblab = blabRepository.new({
+          filename: audioData.name,
+          text: blab.text,
+          contentType: audioData.type,
+          length: data.length,
+          audioKey: key
+        });
+
+        // Fire off a transcription request
+        transcribe(newblab, res, function() {
+          console.log('Transcription finished');
+        });
+
+        // Return the result to the client
+        res.json(newblab);
       });
-
-      // Fire off a transcription request
-      transcribe(newblab, res, function() {
-        console.log('Transcription finished');
-      });
-
-      // Return the result to the client
-      res.json(newblab);
     });
-  });
+  } else {
+    var newblab = blabRepository.new({
+      text: blab.text
+    });
+    res.json(newblab);
+  }
 });
 
 app.get('/blabs/:id', function(req, res) {
