@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html ng-app>
+	<head>
+		<title><%- title %></title>
+
+		<!-- Viewport mobile tag for sensible mobile support -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+		
+		<!-- Stylesheets from your assets folder are included here -->
+		<%- assets.css() %>
+                <style>
+                  body {
+                    padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+                  }
+                </style>
+	</head>
+
+	<body>
+		<%- body %>
+
+		<!-- Templates from your view path are included here -->
+		<%- assets.templateLibrary() %>
+
+		<!-- Javascripts from your assets folder are included here -->
+                <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.6/angular.min.js"></script>
+                <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+		<%- assets.js() %>
+	</body>
+</html>
