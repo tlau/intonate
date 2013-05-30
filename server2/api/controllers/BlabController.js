@@ -15,6 +15,7 @@ var OAUTH_TOKEN = "b888bac0968b87ba2b5a1f6e03c978ac";
 ---------------------*/
 var BlabController = {
 
+  /** Override the /blab/create API function */
   create: function(req, res) {
     console.log('in create, starting');
     var _this = this;
@@ -43,7 +44,7 @@ var BlabController = {
               return res.send(err);
             }
 
-            var wavKey = BlabController.getRandomKey();
+            var wavKey = BlabController._getRandomKey();
             console.log('Setting wavkey to', wavKey);
             db.set(wavKey, wavdata, function(err) {
               if (err) return res.send(err);
@@ -83,16 +84,17 @@ var BlabController = {
       }
 
       // Save it to the blab
-      var key = BlabController.getRandomKey();
+      var key = BlabController._getRandomKey();
       db.set(key, data, function(err) {
         if (err) {
           return callback(err);
         }
 
-        Blab.update({id: blab.id}, {audioKey: key}, function(err, blab) {
-          if (err) return callback(err);
+        Blab.update({id: blab.id}, {audioKey: key, contentType: audioFile.type},
+          function(err, blab) {
+            if (err) return callback(err);
 
-          callback(false, data);
+            callback(false, data);
         });
 
       });
@@ -159,9 +161,25 @@ var BlabController = {
     console.log('Sending', data.length, 'bytes to AT&T Speech API');
   },
 
-  getRandomKey: function() {
+  _getRandomKey: function() {
     return 'blab_' + Math.random() * 10000;
-  }
+  },
 
+  audio: function(req, res) {
+    var id = req.param('id');   
+    Blab.find(id).done(function(err, blab) {
+      db.get(blab.audioKey, function(err, data) {
+        if (err) return res.send(err);
+        console.log('Sending bytes to client:', data.length);
+        console.log('Sending content-type:', blab.contentType);
+        res.writeHead(200, {
+          'Content-type': blab.contentType,
+          'Content-length': data.length
+        });
+        res.write(data);
+        res.end();
+      });
+    });
+  }
 };
 module.exports = BlabController;
