@@ -4,22 +4,29 @@ var INTONATE = INTONATE || {
 
 // A blab object to pass around
 INTONATE.Blab = (function(){
-  function initialize(params) {
+  function Blab(params) {
     var params = params || {};
     this.text = params.transcription || params.text || undefined;
-    this.audioFileName = params.audioFileName || undefined;
+    this.audioObject = params.audioObject || undefined;
     this.id = params.id || undefined;
   };
-  return initialize;
+  Blab.prototype = {
+    save: function save(callback) {
+      this.audioObject && this.audioObject.upload(function(data){
+        this.id = data.id || this.id;
+        this.text = data.text || this.text;
+      });
+    }
+  };
+  return Blab;
 }());
 
 INTONATE.InputWidget = (function($){
   var domNode; // Reference to widget root element
-  var net;     // INTONATE.Service object for network requests
 
   var mode = "text"; // current input mode. Valid values: text, audio
 
-  var mediaObj;   // Currently-in-use media object
+  var audioObject;   // Currently-in-use media object
 
   // Pointers to specific widget DOM elements
   var textInput;  // Text input form element
@@ -50,10 +57,8 @@ INTONATE.InputWidget = (function($){
   function onSend() {
     var blab = new INTONATE.Blab();
     if(mode == 'audio') {
-      mediaObj.stopRecord();
-      mediaObj.release();
-      mediaObj = undefined;
-      blab.audioFileName = 'file:///sdcard/intonate.amr';
+      audioObject.stop();
+      blab.audioObject = audioObject;
       blab.text = "(audio translation in progress)";
     } else {
       blab.text = textInput.value;
@@ -72,36 +77,23 @@ INTONATE.InputWidget = (function($){
     if(mode == 'audio') {
       $('.text-input').hide();
       $('.audio-meter').show();
-      mediaObj = new Media("intonate.amr", mediaSuccess, mediaError);
-      mediaObj.startRecord();
+      audioObject = new INTONATE.Audio();
+      audioObject.record();
       console.log("Recording stated");
     } else {
-      if( mediaObj) {
-        nextStep = function() {};
-        mediaObj.stopRecord();
-        mediaObj.release();
-        mediaObj = undefined;
-      }
+      audioObject.stop();
       $('.text-input').show();
       $('.audio-meter').hide();
     }
-  };
-  function mediaSuccess() {
-    console.log("Media success");
-  };
-  function mediaError() {
-    console.log("Media error");
   };
   return iw;
 }(jQuery));
 
 INTONATE.EntryWidget = (function($){
-
   // Constructor
   var ew = function(options) {
     var params = options || {};
     this.blab = params.blab || {};
-    this.network = params.network;
 
     this.domNode = initializeDom.call(this);
     render.call(this);
@@ -112,7 +104,7 @@ INTONATE.EntryWidget = (function($){
     //  downloading: downloading file for playback
     //  ready: audio available locally for playback
     //  playing: in the middle of playback
-    if(this.blab.audioFileName) {
+    if(this.blab.audioObject) {
       this.playingState = "ready";
     } else if(this.blab.id) {
       this.playingState = "idle";
@@ -167,9 +159,10 @@ INTONATE.EntryWidget = (function($){
 
     // See if we need to start downloading
     } else if(this.playingState == 'idle') {
-      this.network.getBlabAudio(this.blab.id, function(fileEntry) {
-        // _this.blab.audioFileName = fileEntry.fullPath.split("/").reverse()[0];
-        _this.blab.audioFileName = fileEntry.fullPath;
+      this.blab.audioObject = new INTONATE.Audio({
+        blabId: this.blab.id
+      });
+      this.blab.audioObject.download(function() {
         _this.playingState = 'ready';
         startPlayback.call(_this);
       });
@@ -177,95 +170,26 @@ INTONATE.EntryWidget = (function($){
       this.playingState = 'downloading';
       render.call(this);
 
-
     // If we're here it must mean we have the audio locally so, play
     } else {
       this.playingState = 'playing';
       render.call(this);
 
-      this.mediaObj = new Media(this.blab.audioFileName,
-             function success() {
-               stopPlayback.call(_this, true);
-               $(_this).trigger('playbackFinished', _this);
-             },
-             function error() {
-               console.log("media playback error");
-             },
-             function status() {
-               console.log("media playback status");
-             });
-      this.mediaObj.play();
+      $(this.blab.audioObject).on('playbackFinished',function(ev){
+        _this.playingState = 'ready';
+        render.call(_this);
+        $(_this).trigger('playbackFinished', _this);
+      });
+      this.blab.audioObject.play();
       $(_this).trigger('playbackStarted', _this);
     }
   };
-  function stopPlayback(skipStop) {
+  function stopPlayback() {
     if(this.playingState == 'playing') {
-      if(!skipStop)
-        this.mediaObj.stop();
-      this.mediaObj.release();
-      this.mediaObj = undefined;
+      this.blab.audioObject.stop();
       this.playingState = 'ready';
       render.call(this);
     }
   };
   return ew;
 }(jQuery));
-
-INTONATE.Service = (function($){
-  var net = function(serviceUrl){
-    this.baseUrl = serviceUrl;
-  };
-  function post(blab, success){
-    var options = new FileUploadOptions();
-    options.fileKey="audio";
-    options.fileName="intonate.amr";
-    options.mimeType="audio/AMR";
-    options.params = {
-      text: blab.text
-    };
-    var ft = new FileTransfer();
-    ft.upload("file:///sdcard/intonate.amr", this.baseUrl + 'blabs/new',
-              success,
-              function() { console.log('error sending audio file'); },
-              options);
-  };
-  function getBlabs() {
-    return $.get(this.baseUrl+'blabs');
-  };
-  function getAudio(blabId, callback) {
-    var fileName = 'downblab' + blabId;
-    var ft = new FileTransfer();
-    ft.download(this.baseUrl+'blabs/'+blabId+'/audio',
-               'file:///sdcard/'+fileName,
-               callback, function() {
-                console.log("Error fetching audio");
-               });
-  };
-
-  // Advertise public functions
-  net.prototype.post = post;
-  net.prototype.getBlabs = getBlabs;
-  net.prototype.getBlabAudio = getAudio;
-
-  return net;
-}(jQuery));
-
-// --------------------------------
-// Mock objects for browser testing
-// --------------------------------
-
-/*
-MockMedia = function() {};
-MockMedia.prototype = {
-  startRecord: function() {},
-  stopRecord: function() {},
-  release: function() {}
-};
-Media = window.Media || MockMedia;
-FileUploadOptions = window.FileUploadOptions || function() {};
-MockFileTransfer = function() {};
-MockFileTransfer.prototype = {
-  upload: function() {}
-};
-FileTransfer = window.FileTransfer || MockFileTransfer;
-*/

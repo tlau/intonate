@@ -1,25 +1,18 @@
-// jQuery main hook-up
-function onDeviceReady() {
-  main();
-}
-
-
 // Main application entry point
 function main() {
-  // Network communication object
-  var serviceObject = new INTONATE.Service('http://10.200.201.26:3000/');
+  // Configure the correct type of abstraction for this environment:
+  INTONATE.Audio = navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry)/) ? INTONATE.PhoneGapAudio : INTONATE.WebAudio;
 
   // Create the Input widget
   var inputWidget = INTONATE.InputWidget({
     root: '#input'
   }).on('submitted',function(event, blab){
     var newEntry = new INTONATE.EntryWidget({
-      blab: blab,
-      network: serviceObject
+      blab: blab
     });
     appendWidget(newEntry);
-    var jqxhr = serviceObject.post(blab, function(data) {
-      newEntry.update(JSON.parse(data.response));
+    blab.save(function() {
+      newEntry.update();
     });
   });
 
@@ -30,7 +23,7 @@ function main() {
   // It needs to be replaced by a more serious mechanism
   setInterval(function refresh() {
     if(!currentlyPlaying) {
-      serviceObject.getBlabs().
+      INTONATE.Audio.getBlabs().
         done(function(data){
           // Clear any pre-existing widgets
           $('#entries').empty();
@@ -40,8 +33,7 @@ function main() {
           data.blabs.forEach(function(blab){
             var blab = new INTONATE.Blab(blab);
             var newEntry = new INTONATE.EntryWidget({
-              blab: blab,
-              network: serviceObject
+              blab: blab
             });
             appendWidget(newEntry);
           });
