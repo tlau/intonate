@@ -105,19 +105,20 @@
         <!-- Javascript -->
         <script src="js/vendor/jquery-1.9.1.min.js"></script>
         <script src="js/vendor/bootstrap.min.js"></script>
-        <script src="js/recorder.js"></script>
+        <script src="js/vendor/recorder.js"></script>
         <script src="js/intonate.audio.js"></script>
         <script src="js/intonate.js"></script>
         <script src="js/main.js"></script>
         <script>
           function onDeviceReady() {
-            $(main);
+            main();
           };
           if (navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry)/)) {
             document.write('<script src="js/vendor/cordova-2.7.0.js"><'+'/script>');
             document.addEventListener("deviceready", onDeviceReady, false);
           } else {
-            onDeviceReady();
+            document.write('<script src="js/vendor/recorder.js"><'+'/script>');
+            $(onDeviceReady);
           }
         </script>
     </body>

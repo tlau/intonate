@@ -3,15 +3,58 @@ var INTONATE = INTONATE || {};
 INTONATE.BASE_URL = 'http://10.200.201.26:3000/';
 
 INTONATE.WebAudio = (function(Recorder){
-  function init() {}
-  init.prototype = {
-    record: function() {},
-    stop: function() {},
-    play: function() {},
-    upload: function() {},
-    download: function() {}
+  // Compatibility
+  window.URL = window.URL || window.webkitURL;
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  navigator.getUserMedia  = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                              navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+  // Try to get user media right away
+  var localMediaStream;
+  navigator.getUserMedia({audio: true}, function(lms) {
+    localMediaStream = lms;
+  }, getUserMediaError)
+
+  function WebAudio() {
+    this.audioContext = new AudioContext();
+    this.recorder = new Recorder(this.audioContext.createMediaStreamSource(localMediaStream),
+      { workerPath: 'js/vendor/recorderWorker.js' });
   };
-  return init;
+  WebAudio.prototype = {
+    record: function record() {
+      this.recorder.record();
+    },
+    stop: function stop() {
+      this.recorder.stop();
+    },
+    play: function play() {},
+    download: function download() {},
+    upload: function upload(successCallback) {
+      this.recorder.exportWAV(function(blob) {
+        var formData = new FormData();
+        formData.append('audio', blob);
+        $.ajax({
+          url: 'blabs/new',
+          type: 'POST',
+          data: formData,
+          cache: false,
+          contentType: false,
+          processData: false
+        }).done(successCallback);
+      });
+    }
+  };
+  // Factory method from network
+  WebAudio.getBlabs = function() {
+    // TODO: Parse the response and return an array of Blabs
+    // to the caller instead
+    return $.get('blabs');
+  };
+
+  function getUserMediaError(e) {
+    console.log('error getting local media: ' + e);
+  };
+  return WebAudio;
 }(Recorder));
 
 INTONATE.PhoneGapAudio = (function(){
