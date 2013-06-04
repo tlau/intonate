@@ -104,9 +104,9 @@ INTONATE.EntryWidget = (function($){
     //  downloading: downloading file for playback
     //  ready: audio available locally for playback
     //  playing: in the middle of playback
-    if(this.blab.audioObject) {
+    if(this.blab.audioObject && this.blab.canPlay()) {
       this.playingState = "ready";
-    } else if(this.blab.id) {
+    } else if(this.blab.id || this.blab.audioObject) {
       this.playingState = "idle";
     } else {
       this.playingState = "disabled";

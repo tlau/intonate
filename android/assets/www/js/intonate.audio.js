@@ -11,24 +11,54 @@ INTONATE.WebAudio = (function(Recorder){
 
   // Try to get user media right away
   var localMediaStream;
-  navigator.getUserMedia({audio: true}, function(lms) {
+  navigator.getUserMedia && navigator.getUserMedia({audio: true}, function(lms) {
     localMediaStream = lms;
-  }, getUserMediaError)
+  }, getUserMediaError);
 
-  function WebAudio() {
+  function WebAudio(params) {
     this.audioContext = new AudioContext();
-    this.recorder = new Recorder(this.audioContext.createMediaStreamSource(localMediaStream),
-      { workerPath: 'js/vendor/recorderWorker.js' });
+    params = params || {};
+    this.blabId = params.blabId || 'new';
+    this.decodedBuffer = undefined;
+    this.bufferSource = undefined;
+    this.recorder = undefined;
   };
   WebAudio.prototype = {
+    canPlay: function canPlay() {
+      return (this.decodedBuffer != undefined);
+    },
     record: function record() {
+      this.recorder = new Recorder(this.audioContext.createMediaStreamSource(localMediaStream),
+      { workerPath: 'js/vendor/recorderWorker.js' });
       this.recorder.record();
     },
     stop: function stop() {
-      this.recorder.stop();
+      this.recorder && this.recorder.stop();
+      this.bufferSource && this.bufferSource.stop();
+      this.recorder = this.bufferSource = undefined;
     },
-    play: function play() {},
-    download: function download() {},
+    play: function play() {
+      // TODO: How to notify of playback finished?
+      this.bufferSource = this.audioContext.createBufferSource();
+      this.bufferSource.buffer = this.decodedBuffer;
+      this.bufferSource.connect(this.audioContext.destination);
+      this.bufferSource.start(0);
+    },
+    download: function download(successCallback) {
+      // I have to use native XHR2 instead of jQuery.ajax
+      // because jQuery.ajax doesn't support ArrayBuffer yet
+      var _this = this;
+      var req = new XMLHttpRequest();
+      req.open('GET', 'blabs/' + this.blabId + '/audio', true);
+      req.responseType = 'arraybuffer';
+      req.onload = function() {
+        _this.audioContext.decodeAudioData(req.response, function(buffer) {
+          _this.decodedBuffer = buffer;
+          successCallback();
+        }, function(e) { console.log('Error decoding audio buffer: ' + e); });
+      };
+      req.send();
+    },
     upload: function upload(successCallback) {
       this.recorder.exportWAV(function(blob) {
         var formData = new FormData();
@@ -65,6 +95,9 @@ INTONATE.PhoneGapAudio = (function(){
     this.fileName = makeFileName(this.blabId);
   }
   PhoneGapAudio.prototype = {
+    canPlay: function canPlay() {
+      return true;
+    },
     record: function record() {
       this._recordMedia = new Media(this.fileName.split('/').reverse()[0], mediaSuccess, mediaError);
       this._recordMedia.startRecord();
@@ -79,6 +112,9 @@ INTONATE.PhoneGapAudio = (function(){
     play: function play() {
       _this = this;
       this._playMedia = new Media(this.fileName, function() {
+        // TODO: This is the only place where we're using
+        // trigger and finishedPlaying. I should use a callback
+        // and inline finishedPlaying instead. Cleanup
         finishedPlaying.call(_this);
         $(_this).trigger('playbackFinished');
       }, mediaError);
