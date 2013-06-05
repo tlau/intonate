@@ -10,13 +10,12 @@ INTONATE.WebAudio = (function(Recorder){
                               navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
   // Try to get user media right away
-  var localMediaStream;
+  var localMediaStream, audioContext = navigator.getUserMedia && new AudioContext();
   navigator.getUserMedia && navigator.getUserMedia({audio: true}, function(lms) {
     localMediaStream = lms;
   }, getUserMediaError);
 
   function WebAudio(params) {
-    this.audioContext = new AudioContext();
     params = params || {};
     this.blabId = params.blabId || 'new';
     this.decodedBuffer = undefined;
@@ -28,21 +27,36 @@ INTONATE.WebAudio = (function(Recorder){
       return (this.decodedBuffer != undefined);
     },
     record: function record() {
-      this.recorder = new Recorder(this.audioContext.createMediaStreamSource(localMediaStream),
+      this.recorder = new Recorder(audioContext.createMediaStreamSource(localMediaStream),
       { workerPath: 'js/vendor/recorderWorker.js' });
       this.recorder.record();
     },
     stop: function stop() {
       this.recorder && this.recorder.stop();
       this.bufferSource && this.bufferSource.stop();
-      this.recorder = this.bufferSource = undefined;
+      this.bufferSource = undefined;
     },
     play: function play() {
-      // TODO: How to notify of playback finished?
-      this.bufferSource = this.audioContext.createBufferSource();
+      var _this = this;
+      this.bufferSource = audioContext.createBufferSource();
       this.bufferSource.buffer = this.decodedBuffer;
-      this.bufferSource.connect(this.audioContext.destination);
+      this.bufferSource.connect(audioContext.destination);
       this.bufferSource.start(0);
+
+
+      // This is the best I could find so far in terms of notifying
+      // ourselves of when the stream is finished playing:
+      // Set a timer and check whether audioContext.activeSourceCount is
+      // zero. But beware: the first time you start playback it takes a little
+      // while to get started (about a second) so make sure to offset the
+      // checking for a little while first
+      // What I'm going to do is to start checking at the expected duration
+      // of the playback and then, when I get there, I will check if it is still
+      // playing or not
+      var duration =  this.decodedBuffer.duration * 1000;
+      this.playingTimer = setTimeout(function() {
+        notifyIfFinished(_this);
+      }, duration);
     },
     download: function download(successCallback) {
       // I have to use native XHR2 instead of jQuery.ajax
@@ -52,7 +66,7 @@ INTONATE.WebAudio = (function(Recorder){
       req.open('GET', 'blabs/' + this.blabId + '/audio', true);
       req.responseType = 'arraybuffer';
       req.onload = function() {
-        _this.audioContext.decodeAudioData(req.response, function(buffer) {
+        audioContext.decodeAudioData(req.response, function(buffer) {
           _this.decodedBuffer = buffer;
           successCallback();
         }, function(e) { console.log('Error decoding audio buffer: ' + e); });
@@ -81,6 +95,17 @@ INTONATE.WebAudio = (function(Recorder){
     return $.get('blabs');
   };
 
+  function notifyIfFinished(audioObject) {
+    if(audioContext.activeSourceCount == 0) {
+      // It finished! Trigger event
+      $(audioObject).trigger('playbackFinished');
+    } else {
+      // Try again in half a second
+      audioObject.playingTimer = setTimeout(function() {
+        notifyIfFinished(audioObject);
+      }, 500);
+    }
+  };
   function getUserMediaError(e) {
     console.log('error getting local media: ' + e);
   };
