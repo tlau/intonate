@@ -33,7 +33,8 @@ INTONATE.WebAudio = (function(Recorder){
     },
     stop: function stop() {
       this.recorder && this.recorder.stop();
-      this.bufferSource && this.bufferSource.stop();
+      this.bufferSource && this.bufferSource.stop(0);
+      this.playingTimer && clearTimeout(this.playingTimer);
       this.bufferSource = undefined;
     },
     play: function play() {
