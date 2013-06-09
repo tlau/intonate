@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+  <button id="clicker">Record</button>
+
+  <!-- Javascript -->
+  <script src="http://code.jquery.com/jquery-1.10.0.min.js"></script>
+  <script src="recorder.js"></script>
+  <script>
+  // Compatibility
+  window.URL = window.URL || window.webkitURL;
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  navigator.getUserMedia  = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                              navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+  var recorder;
+
+  $('#clicker').on('click',function(ev){
+    if($('#clicker').html() == "Record") {
+      $('#clicker').html('Stop');
+      recorder.record();
+    } else {
+      $('#clicker').html('Record');
+      recorder.stop();
+      recorder.exportWAV(function(blob){
+        // blob =  URL.createObjectURL(blob);
+        console.log('I\'m going to send this blab: ' + blob);
+        var formData = new FormData();
+        formData.append('audio', blob);
+        $.ajax({
+          url: '/new',
+          type: 'POST',
+          data: formData,
+          cache: false,
+          contentType: false,
+          processData: false
+        });
+      });
+    }
+  });
+
+  $(function(){
+    if(!hasGetUserMedia()) {
+      console.log("no user media");
+      return;
+    }
+    navigator.getUserMedia({audio: true}, function(localMediaStream) {
+      console.log('got localMediaStream', localMediaStream);
+      var audioContext = new AudioContext();
+      var input = audioContext.createMediaStreamSource(localMediaStream);
+      //input.connect(audioContext.destination);
+      recorder = new Recorder(input);
+      console.log('ready to record');
+    },function(e) {
+      console.log('error getting local media: ' + e);
+    });
+  });
+
+  function hasGetUserMedia() {
+      // Note: Opera is unprefixed.
+       return !!(navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                     navigator.mozGetUserMedia || navigator.msGetUserMedia);
+  }
+
+  </script>
+</body>
