@@ -1,0 +1,45 @@
+extends layout
+
+block body
+  div(ng-controller='AppCtrl')
+    div(class='navbar navbar-inverse navbar-fixed-top')
+      div(class='navbar-inner')
+        div(class='container-fluid')
+          a(class='brand') Intonate
+
+    div(class='container-fluid')
+      h2 Hello {{name}} {{recordMode}}
+
+      div(class='wdg-intonate-input')
+        form(enctype='multipart/form-data')
+          img(class='audio', src='img/noun_mic.png', width='40', ng-click='onStartRecording()')
+          input(class='text-input', name='text', type='text', ng-model='text', ng-show='!recordMode')
+          span(class='audio-meter', ng-show='recordMode') recording input volume
+          img(class='send', src='img/noun_send.png', width='40', ng-click='onSend()')
+          input(class='audio-input', name='audio', type='file', style='display: none;')
+
+
+      div Blabs:
+      ul
+        li(ng-repeat='blab in blabs')
+          a(ng-click='remove(blab)') [X]
+          {{blab.text}} | {{blab.transcription}}
+          img(class='play', src='img/noun_play.png', width='40')
+          img(class='stop', src='img/noun_stop.png', width='40', class='hidden')
+          img(class='download', src='img/noun_download.png', width='40', class='hidden')
+
+      hr
+      footer
+        p(class='pull-right') &copy; Cygx1 2013
+
+  script(src='js/lib/angular/angular.js')
+  script(src='js/lib/bootstrap/bootstrap.min.js')
+  script(src='js/lib/recorder/recorder.js')
+  script(src='/socket.io/socket.io.js')
+  script(src='js/app.js')
+  script(src='js/services.js')
+  script(src='js/controllers.js')
+  script(src='js/filters.js')
+  script(src='js/directives.js')
+  script(src='js/intonate.audio.js')
+
