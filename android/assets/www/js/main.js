@@ -1,7 +1,25 @@
 // Main application entry point
 function main() {
   // Configure the correct type of abstraction for this environment:
-  INTONATE.Audio = navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry)/) ? INTONATE.PhoneGapAudio : INTONATE.WebAudio;
+  var isPhoneGap = navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry)/);
+  INTONATE.Audio = isPhoneGap ? INTONATE.PhoneGapAudio : INTONATE.WebAudio;
+
+  // Hook-up configuration of server URL for PhoneGap devices
+  if(!isPhoneGap) {
+  	$('#server-url').hide();
+  } else {
+    /*
+    $('#server-url-form').on('submit',function(ev){
+      console.log('preventing');
+      // ev.preventDefault();
+    }); */
+    $('#server-url').on('change',function(ev){
+      window.localStorage && window.localStorage.setItem('server-url',$('#server-url').val());
+      INTONATE.BASE_URL = $('#server-url').val();
+    });
+    $('#server-url').val(window.localStorage && window.localStorage.getItem('server-url'));
+    INTONATE.BASE_URL = $('#server-url').val();
+  }
 
   // Create the Input widget
   var inputWidget = INTONATE.InputWidget({
