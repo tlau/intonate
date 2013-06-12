@@ -72,6 +72,7 @@ app.get('/blabs', function(req, res) {
 
 app.post('/blabs/new', function(req, res) {
   var blab = req.body;
+  console.log('In blabs/new, req.files:', req.files);
   if (req.files && req.files.audio && req.files.audio.name) {
     var audioData = req.files.audio;
 
@@ -219,7 +220,7 @@ function convert(amrdata, callback) {
   var amrtmp = __dirname + '/in.amr';
   var wavtmp = __dirname + '/out.wav';
   fs.writeFile(amrtmp, amrdata, function(err) {
-    child_process.execFile('avconv', ['-y', '-i', amrtmp, wavtmp], {},
+    child_process.execFile('avconv', ['-y', '-i', amrtmp, '-ac', '1', wavtmp], {},
       function(error, stdout, stderr) {
         if (error) {
           // Handle error execing avconv
@@ -264,13 +265,18 @@ function transcribe(blab, res, callback) {
 
         // Here we have the results from the server
         var serverResults = JSON.parse(chunk);
-        var text = serverResults.Recognition.NBest[0].ResultText;
-        console.log('Recognized text:', text);
+        if (serverResults.Recognition.NBest) {
+          var text = serverResults.Recognition.NBest[0].ResultText;
+          console.log('Recognized text:', text);
 
-        blab.transcription = text;
-        blabRepository.save();
+          blab.transcription = text;
+          blabRepository.save();
 
-        callback(false, text);
+          callback(false, text);
+
+        } else {
+          callback(true, serverResults.Recognition.Status);
+        }
       });
     });
 

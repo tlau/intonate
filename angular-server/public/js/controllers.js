@@ -5,14 +5,13 @@
 function refreshBlabs(cb) {
 };
 
-function AppCtrl($scope, $http) {
+function AppCtrl($scope, $http, WebAudio) {
   $scope.name = 'Tessa';
   $scope.text = '';
-  console.log('INTONATE:', INTONATE);
   if (navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry)/)) {
-    INTONATE.Audio = INTONATE.PhoneGapAudio;
+    Audio = PhoneGapAudio;
   } else {
-    INTONATE.Audio = INTONATE.WebAudio;
+    Audio = WebAudio;
   }
 
   $scope.blabs = [{text: 'one'}, {text: 'two'}, {text: 'three'}];
@@ -35,7 +34,9 @@ function AppCtrl($scope, $http) {
   };
 
   $scope.onSend = function() {
-    console.log('ignoring text:', $scope.text);
+    //console.log('ignoring text:', $scope.text);
+    console.log('stopping recording');
+    $scope.audioObject && $scope.audioObject.stop();
 
     $scope.audioObject && $scope.audioObject.upload(function(data){
       console.log('Upload complete, data returned:', data);
@@ -48,7 +49,7 @@ function AppCtrl($scope, $http) {
   $scope.onStartRecording = function() {
     $scope.recordMode = ! $scope.recordMode;
     if ($scope.recordMode) {
-      $scope.audioObject = new INTONATE.Audio();
+      $scope.audioObject = Audio;
       $scope.audioObject.record();
     }
   };
