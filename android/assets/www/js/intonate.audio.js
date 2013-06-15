@@ -113,8 +113,7 @@ INTONATE.WebAudio = (function(Recorder){
   return WebAudio;
 }(Recorder));
 
-INTONATE.PhoneGapAudio = (function(){
-  baseUrl = INTONATE.BASE_URL || '/';
+INTONATE.PhoneGapAudio = (function(INTONATE){
   function PhoneGapAudio(params) {
     params = params || {};
     this.blabId = params.blabId || 'new';
@@ -152,7 +151,7 @@ INTONATE.PhoneGapAudio = (function(){
       options.fileKey="audio";
       options.fileName=this.fileName.split('/').reverse()[0];
       options.mimeType="audio/AMR";
-      ft.upload(this.fileName, baseUrl + 'blabs/new',
+      ft.upload(this.fileName, INTONATE.BASE_URL + 'blabs/new',
               function(data) {
                 successCallback(JSON.parse(data.response));
               },
@@ -161,7 +160,7 @@ INTONATE.PhoneGapAudio = (function(){
     },
     download: function download(successCallback) {
       var ft = new FileTransfer();
-      ft.download(baseUrl+'blabs/'+this.blabId+'/audio',
+      ft.download(INTONATE.BASE_URL+'blabs/'+this.blabId+'/audio',
                this.fileName,
                successCallback, function() {
                 console.log("Error fetching audio");
@@ -173,7 +172,7 @@ INTONATE.PhoneGapAudio = (function(){
   PhoneGapAudio.getBlabs = function() {
     // TODO: Parse the response and return an array of Blabs
     // to the caller instead
-    return $.get(baseUrl+'blabs');
+    return $.get(INTONATE.BASE_URL+'blabs');
   };
 
   // Private methods
@@ -191,4 +190,4 @@ INTONATE.PhoneGapAudio = (function(){
     console.log('Media error');
   };
   return PhoneGapAudio;
-}());
+}(INTONATE));
