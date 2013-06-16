@@ -98,7 +98,7 @@ app.post('/blabs/new', function(req, res) {
 
         convert(data, function(err, wavdata) {
           if (err) {
-            res.send(500, msg);
+            res.send(500, err);
           }
 
           newblab.wavKey = "blab_" + Math.random() * 100000;
@@ -220,7 +220,7 @@ function convert(amrdata, callback) {
   var amrtmp = __dirname + '/in.amr';
   var wavtmp = __dirname + '/out.wav';
   fs.writeFile(amrtmp, amrdata, function(err) {
-    child_process.execFile('avconv', ['-y', '-i', amrtmp, '-ac', '1', wavtmp], {},
+    child_process.execFile('ffmpeg', ['-y', '-i', amrtmp, '-ac', '1', wavtmp], {},
       function(error, stdout, stderr) {
         if (error) {
           // Handle error execing avconv

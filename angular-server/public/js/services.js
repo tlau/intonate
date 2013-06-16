@@ -82,13 +82,13 @@ angular.module('myApp.services', []).
           notifyIfFinished(_this);
         }, duration);
       },
-      download: function (successCallback) {
+      download: function (blabId, successCallback) {
         // I have to use native XHR2 instead of jQuery.ajax
         // because jQuery.ajax doesn't support ArrayBuffer yet
         var _this = this;
         // TODO: make work with $http
         var req = new XMLHttpRequest();
-        req.open('GET', 'blabs/' + this.blabId + '/audio', true);
+        req.open('GET', 'blabs/' + blabId + '/audio', true);
         req.responseType = 'arraybuffer';
         req.onload = function() {
           audioContext.decodeAudioData(req.response, function(buffer) {
@@ -116,4 +116,67 @@ angular.module('myApp.services', []).
         });
       }
     };
+  }).
+  factory('PhoneGapAudio', function($http) {
+    return {
+      canPlay: function() {
+        return true;
+      },
+
+      record: function() {
+        var fileName = 'file:///sdcard/intonate-' + Math.floor(Math.random()*1e10) + '.amr';
+        this._recordMedia = new Media(fileName.split('/').reverse()[0], function() {
+          console.log('Media success')},
+          function() { console.log('Media error'); });
+        this._recordMedia.startRecord();
+      },
+
+      stop: function stop() {
+        this._media = this._recordMedia || this._playMedia;
+        this._recordMedia && this._recordMedia.stopRecord();
+        this._playMedia && this._playMedia.stop();
+        this._media && this._media.release();
+        this._recordMedia = this._stopMedia = undefined;
+      },
+
+      play: function play(fileName) {
+        _this = this;
+        if (!fileName) {
+          console.log('No filename specified for play');
+          return;
+        }
+        this._playMedia = new Media(fileName, function() {
+          // TODO: This is the only place where we're using
+          // trigger and finishedPlaying. I should use a callback
+          // and inline finishedPlaying instead. Cleanup
+          _this._playMedia.release();
+          _this._playMedia = undefined;
+          $(_this).trigger('playbackFinished');
+        }, mediaError);
+        this._playMedia.play();
+      },
+
+      upload: function upload(fileName, successCallback) {
+        var ft = new FileTransfer();
+        var options = new FileUploadOptions();
+        options.fileKey="audio";
+        options.fileName=fileName.split('/').reverse()[0];
+        options.mimeType="audio/AMR";
+        ft.upload(fileName, INTONATE.BASE_URL + 'blabs/new',
+                function(data) {
+                  successCallback(JSON.parse(data.response));
+                },
+                function() { console.log('error sending audio file'); },
+                options);
+      },
+
+      download: function download(blabId, fileName, successCallback) {
+        var ft = new FileTransfer();
+        ft.download(INTONATE.BASE_URL+'blabs/'+blabId+'/audio',
+                 fileName,
+                 successCallback, function() {
+                  console.log("Error fetching audio");
+                 });
+      },
+    }
   });
